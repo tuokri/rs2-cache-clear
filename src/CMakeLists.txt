@@ -5,6 +5,9 @@ add_executable(
         MainWidget.cpp
         MainWidget.hpp
         Utils.cpp
-        Utils.hpp)
+        Utils.hpp
+        Worker.hpp
+        ../resources/resources.qrc
+)
 
-target_link_libraries(rs2-config-clear Qt5::Widgets)
+target_link_libraries(rs2-config-clear Qt5::Widgets Qt5::Core)

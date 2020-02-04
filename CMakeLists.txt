@@ -7,6 +7,6 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 set (CMAKE_PREFIX_PATH "C:\\Dev\\Qt\\Qt5.14.1\\5.14.1\\msvc2017_64")
-find_package(Qt5 COMPONENTS Widgets REQUIRED)
+find_package(Qt5 COMPONENTS Widgets Core REQUIRED)
 
 add_subdirectory(src)

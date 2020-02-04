@@ -13,16 +13,25 @@ public:
 
     ~MainWidget() override;
 
-private slots:
+public slots:
+    void
+    onError(const QString& msg);
 
     void
-    onFindCacheButtonClicked();
+    setSpinnerEnabled(bool enabled);
 
     void
-    onClearCacheButtonClicked();
+    handleRemovedPaths(const QVector<QString>& paths);
+
+    void
+    resetProgressBar();
 
 private:
+    QThread* _findCacheThread;
+    QThread* _clearCacheThread;
     QLabel* _infoText;
+    QLabel* _spinnerLabel;
+    QMovie* _spinnerMovie;
     QPushButton* _findCacheButton;
     QLineEdit* _cachePathText;
     QPushButton* _clearCacheButton;

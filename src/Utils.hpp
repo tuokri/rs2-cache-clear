@@ -7,13 +7,9 @@ namespace Utils
 {
 
 std::filesystem::path
-getUserDocumentsPath();
+getUserRS2ConfigDirPath();
 
 int
 countItemsInPath(const std::filesystem::path& path);
-
-void
-rmdirCallback(const std::filesystem::path& path,
-              const std::function<void(const std::wstring& log)>& callback);
 
 }

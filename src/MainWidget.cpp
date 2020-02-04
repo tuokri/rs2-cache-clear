@@ -1,10 +1,7 @@
-#include <string>
-#include <sstream>
-
 #include <QtWidgets>
 
 #include "MainWidget.hpp"
-#include "Utils.hpp"
+#include "Worker.hpp"
 
 namespace fs = std::filesystem;
 
@@ -26,18 +23,24 @@ MainWidget::MainWidget(QWidget* parent) : QWidget(parent)
         "https://steamcommunity.com/id/fluudah</a><br>"
         "Source code of this tool: <a href=\"https://github.com/tuokri/rs2-config-clear\">"
         "https://github.com/tuokri/rs2-config-clear</a><br><br>"
-        "Version 1.0.0"
+        "Version 1.0.3"
     );
 
+    _spinnerLabel = new QLabel();
+    _spinnerMovie = new QMovie(":/spinner.gif");
+    _spinnerLabel->setMovie(_spinnerMovie);
+    _spinnerLabel->setMinimumHeight(_spinnerMovie->scaledSize().height() + 1);
+    QSizePolicy spPolicy = _spinnerLabel->sizePolicy();
+    spPolicy.setRetainSizeWhenHidden(true);
+    _spinnerLabel->setSizePolicy(spPolicy);
+
     _findCacheButton = new QPushButton("Find RS2 Configuration Files");
-    connect(_findCacheButton, SIGNAL(clicked()), this, SLOT(onFindCacheButtonClicked()));
 
     _cachePathText = new QLineEdit();
     _cachePathText->setReadOnly(true);
 
     _clearCacheButton = new QPushButton("Clear RS2 Configuration Files");
     _clearCacheButton->setEnabled(false);
-    connect(_clearCacheButton, SIGNAL(clicked()), this, SLOT(onClearCacheButtonClicked()));
 
     _clearProgressBar = new QProgressBar();
     _clearProgressBar->setValue(0);
@@ -47,23 +50,70 @@ MainWidget::MainWidget(QWidget* parent) : QWidget(parent)
     _logText = new QTextEdit();
     _logText->setReadOnly(true);
 
-    int topRowSpan = 10;
-    auto mainLayout = new QGridLayout();
-    mainLayout->addWidget(_infoText, 0, 0, topRowSpan, 2);
-    mainLayout->addWidget(_findCacheButton, topRowSpan + 1, 0);
-    mainLayout->addWidget(_cachePathText, topRowSpan + 1, 1);
-    mainLayout->addWidget(_clearCacheButton, topRowSpan + 2, 0);
-    mainLayout->addWidget(_clearProgressBar, topRowSpan + 2, 1);
-    mainLayout->addWidget(_logText, topRowSpan + 3, 0, 1, 2);
+    int incRowSpan = 10;
+    auto gridLayout = new QGridLayout();
+    gridLayout->addWidget(_infoText, 0, 0, incRowSpan, 2);
+    gridLayout->addWidget(_spinnerLabel, ++incRowSpan, 0, 1, 1);
+    gridLayout->addWidget(_findCacheButton, ++incRowSpan, 0);
+    gridLayout->addWidget(_cachePathText, incRowSpan, 1);
+    gridLayout->addWidget(_clearCacheButton, ++incRowSpan, 0);
+    gridLayout->addWidget(_clearProgressBar, incRowSpan, 1);
+    gridLayout->addWidget(_logText, ++incRowSpan, 0, 1, 2);
 
-    setLayout(mainLayout);
+    setLayout(gridLayout);
     setMinimumWidth(512);
     setWindowTitle("RS2: Vietnam Configuration Clearing Tool");
+
+    _findCacheThread = new QThread();
+    _clearCacheThread = new QThread();
+
+    auto findCacheWorker = new FindCacheWorker();
+    auto clearCacheWorker = new ClearCacheWorker();
+
+    connect(_findCacheButton, SIGNAL(clicked()), findCacheWorker, SLOT(doWork()));
+    connect(_findCacheButton, SIGNAL(clicked()), this, SLOT(resetProgressBar()));
+    connect(findCacheWorker, SIGNAL(busy(bool)), _findCacheButton, SLOT(setDisabled(bool)));
+    connect(findCacheWorker, SIGNAL(busy(bool)), this, SLOT(setSpinnerEnabled(bool)));
+    connect(findCacheWorker, SIGNAL(busy(bool)), _clearCacheButton, SLOT(setDisabled(bool)));
+    connect(findCacheWorker, SIGNAL(documentsPathResult(QString)), _cachePathText, SLOT(setText(QString)));
+    connect(findCacheWorker, SIGNAL(failure(const QString&)), this, SLOT(onError(const QString&)));
+    connect(findCacheWorker, SIGNAL(success(bool)), _clearCacheButton, SLOT(setEnabled(bool)));
+    connect(findCacheWorker, SIGNAL(itemCountResult(int)), _clearProgressBar, SLOT(setMaximum(int)));
+    connect(findCacheWorker, SIGNAL(documentsPathResult(QString)), clearCacheWorker, SLOT(setPath(QString)));
+
+    connect(_clearCacheButton, SIGNAL(clicked()), clearCacheWorker, SLOT(doWork()));
+    connect(clearCacheWorker, SIGNAL(removedPaths(QVector<QString>)),
+        this, SLOT(handleRemovedPaths(QVector<QString>)));
+    connect(clearCacheWorker, SIGNAL(progress(int)), _clearProgressBar, SLOT(setValue(int)));
+    connect(clearCacheWorker, SIGNAL(busy(bool)), _clearCacheButton, SLOT(setDisabled(bool)));
+
+    connect(_findCacheThread, SIGNAL(finished()), findCacheWorker, SLOT(deleteLater()));
+    connect(_findCacheThread, SIGNAL(finished()), _findCacheThread, SLOT(deleteLater()));
+    connect(_clearCacheThread, SIGNAL(finished()), clearCacheWorker, SLOT(deleteLater()));
+    connect(_clearCacheThread, SIGNAL(finished()), _clearCacheThread, SLOT(deleteLater()));
+
+    findCacheWorker->moveToThread(_findCacheThread);
+    clearCacheWorker->moveToThread(_clearCacheThread);
+
+    _findCacheThread->start();
+    _clearCacheThread->start();
 }
 
 MainWidget::~MainWidget()
 {
+    _findCacheThread->quit();
+    while (!_findCacheThread->isFinished());
+    qDebug() << __FUNCDNAME__ << ": _findCacheThread done";
+
+    _clearCacheThread->quit();
+    while (!_clearCacheThread->isFinished());
+    qDebug() << __FUNCDNAME__ << ": _clearCacheThread done";
+
+    delete _findCacheThread;
+    delete _clearCacheThread;
     delete _infoText;
+    delete _spinnerLabel;
+    delete _spinnerMovie;
     delete _findCacheButton;
     delete _cachePathText;
     delete _clearCacheButton;
@@ -71,36 +121,40 @@ MainWidget::~MainWidget()
     delete _logText;
 }
 
-void MainWidget::onFindCacheButtonClicked()
+void
+MainWidget::onError(const QString& msg)
 {
-    fs::path path;
-
-    try
-    {
-        path = Utils::getUserDocumentsPath();
-    }
-    catch (const std::runtime_error& e)
-    {
-        std::wstringstream ss;
-        ss << "Error: " << e.what() << "!";
-
-        QMessageBox::warning(this, "Warning",
-                             QString::fromStdWString(ss.str()), QMessageBox::Ok);
-        return;
-    }
-
-    QString text = QString::fromStdWString(path.wstring());
-    _cachePathText->setText(text);
-    _clearProgressBar->setMaximum(Utils::countItemsInPath(path) + 1);
-    _clearCacheButton->setEnabled(true);
+    QMessageBox::warning(this, "Warning",
+                         msg, QMessageBox::Ok);
 }
 
-void MainWidget::onClearCacheButtonClicked()
+void
+MainWidget::setSpinnerEnabled(bool enabled)
 {
-    auto path = fs::path(_cachePathText->text().toStdWString());
-    Utils::rmdirCallback(path, [&](const std::wstring& log)
+    if (enabled)
     {
-        _clearProgressBar->setValue(_clearProgressBar->value() + 1);
-        _logText->insertPlainText(QString::fromStdWString(log));
-    });
+        _spinnerLabel->show();
+        _spinnerMovie->start();
+
+    }
+    else
+    {
+        _spinnerMovie->stop();
+        _spinnerLabel->hide();
+    }
+}
+
+void
+MainWidget::handleRemovedPaths(const QVector<QString>& paths)
+{
+    for (const auto& p: paths)
+    {
+        _logText->append("Removed: " + p);
+    }
+}
+
+void
+MainWidget::resetProgressBar()
+{
+    _clearProgressBar->setValue(0);
 }

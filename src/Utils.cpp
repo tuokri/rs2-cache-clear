@@ -3,7 +3,7 @@
 #include <functional>
 
 #include <windows.h>
-#include <ShlObj_core.h>
+#include <shlobj.h>
 
 #include "Utils.hpp"
 
@@ -12,7 +12,7 @@
 namespace fs = std::filesystem;
 
 fs::path
-Utils::getUserDocumentsPath()
+Utils::getUserRS2ConfigDirPath()
 {
     wchar_t* documents = nullptr;
     HRESULT result = SHGetKnownFolderPath(
@@ -27,7 +27,14 @@ Utils::getUserDocumentsPath()
         throw std::runtime_error("unable to locate user documents directory");
     }
 
-    return fs::path(ss.str());
+    // ss << R"(Documents\My Games\Rising Storm 2\ROGame)";
+    fs::path path = fs::path(ss.str());
+    if (!fs::exists(path))
+    {
+        throw std::runtime_error("unable to locate ROGame directory; missing or already cleared");
+    }
+
+    return path;
 }
 
 int
@@ -35,24 +42,4 @@ Utils::countItemsInPath(const fs::path& path)
 {
     auto iter = fs::recursive_directory_iterator(path);
     return static_cast<int>(std::distance(fs::begin(iter), fs::end(iter)));
-}
-
-void
-Utils::rmdirCallback(const fs::path& path,
-                     const std::function<void(const std::wstring& log)>& callback)
-{
-    std::wstringstream ss;
-
-    for (const auto& subPath: fs::recursive_directory_iterator(path))
-    {
-        // fs::remove_all(subPath);
-        ss << "Removed " << subPath.path().wstring() << "\n";
-        callback(ss.str());
-        ss.clear();
-    }
-
-    // fs::remove(path);
-    ss << "Removed " << path.wstring() << "\n";
-    callback(ss.str());
-    ss.clear();
 }
