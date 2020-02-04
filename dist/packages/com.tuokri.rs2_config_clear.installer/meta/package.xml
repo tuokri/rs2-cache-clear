@@ -2,7 +2,7 @@
 <Package>
     <DisplayName>RS2 Config Clear Tool</DisplayName>
     <Description>Install Config Clear Tool for RS2: Vietnam.</Description>
-    <Version>1.0.3</Version>
+    <Version>1.0.4</Version>
     <ReleaseDate>2020-02-05</ReleaseDate>
     <Licenses>
         <License name="MIT License" file="LICENSE"/>

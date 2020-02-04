@@ -23,7 +23,7 @@ MainWidget::MainWidget(QWidget* parent) : QWidget(parent)
         "https://steamcommunity.com/id/fluudah</a><br>"
         "Source code of this tool: <a href=\"https://github.com/tuokri/rs2-config-clear\">"
         "https://github.com/tuokri/rs2-config-clear</a><br><br>"
-        "Version 1.0.3"
+        "Version 1.0.4"
     );
 
     _spinnerLabel = new QLabel();
