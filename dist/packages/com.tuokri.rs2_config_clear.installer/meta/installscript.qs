@@ -16,5 +16,13 @@ Component.prototype.createOperations = function()
             "iconPath=%SystemRoot%/system32/SHELL32.dll",
             "iconId=22",
             "description=Start rs2-config-clear tool");
+
+        component.addOperation("CreateShortcut",
+            "@TargetDir@/data/rs2-config-clear.exe",
+            "@TargetDir@/rs2-config-clear.lnk",
+            "workingDirectory=@TargetDir@/data/",
+            "iconPath=%SystemRoot%/system32/SHELL32.dll",
+            "iconId=22",
+            "description=Start rs2-config-clear tool");
     }
 }
