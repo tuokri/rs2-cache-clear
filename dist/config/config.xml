@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Installer>
+    <Name>RS2 Config Clear Tool</Name>
+    <Version>1.0.3</Version>
+    <Title>RS2 Config Clear Tool Installer</Title>
+    <Publisher>tuokri</Publisher>
+    <StartMenuDir>RS2 Config Clear Tool</StartMenuDir>
+    <TargetDir>@HomeDir@/rs2-config-clear</TargetDir>
+</Installer>

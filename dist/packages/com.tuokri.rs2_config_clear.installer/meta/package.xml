@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package>
+    <DisplayName>RS2 Config Clear Tool</DisplayName>
+    <Description>Install Config Clear Tool for RS2: Vietnam.</Description>
+    <Version>1.0.3</Version>
+    <ReleaseDate>2020-02-05</ReleaseDate>
+    <Licenses>
+        <License name="MIT License" file="LICENSE"/>
+    </Licenses>
+    <Default>true</Default>
+    <Essential>true</Essential>
+    <ForcedInstallation>true</ForcedInstallation>
+    <Script>installscript.qs</Script>
+</Package>
