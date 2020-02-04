@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <sstream>
 #include <functional>
+#include <filesystem>
 
 #include <windows.h>
 #include <shlobj.h>
@@ -27,7 +28,7 @@ Utils::getUserRS2ConfigDirPath()
         throw std::runtime_error("unable to locate user documents directory");
     }
 
-    // ss << R"(Documents\My Games\Rising Storm 2\ROGame)";
+    ss << R"(\My Games\Rising Storm 2\ROGame)";
     fs::path path = fs::path(ss.str());
     if (!fs::exists(path))
     {

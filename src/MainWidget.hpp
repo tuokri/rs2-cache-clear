@@ -26,6 +26,9 @@ public slots:
     void
     resetProgressBar();
 
+    void
+    handleClearCacheWorkerBusy(bool busy);
+
 private:
     QThread* _findCacheThread;
     QThread* _clearCacheThread;
@@ -37,4 +40,5 @@ private:
     QPushButton* _clearCacheButton;
     QProgressBar* _clearProgressBar;
     QTextEdit* _logText;
+    QTimer* _clearProgressUpdateTimer;
 };

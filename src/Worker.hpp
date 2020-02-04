@@ -23,10 +23,12 @@ public:
     ~Worker() override = default;
 
 public slots:
+
     virtual void
     doWork() = 0;
 
 signals:
+
     void
     busy(bool);
 };
@@ -36,6 +38,7 @@ class FindCacheWorker : public Worker
 Q_OBJECT
 
 public slots:
+
     void
     doWork() override
     {
@@ -45,7 +48,7 @@ public slots:
         try
         {
             path = Utils::getUserRS2ConfigDirPath();
-            qDebug() << "user documents path: " << path.wstring();
+            qDebug() << __FUNCDNAME__ << ": user documents path: " << path.wstring();
         }
         catch (const std::runtime_error& e)
         {
@@ -63,6 +66,7 @@ public slots:
     };
 
 signals:
+
     void
     itemCountResult(int);
 
@@ -82,29 +86,18 @@ Q_OBJECT
 
 public:
     ClearCacheWorker()
-    : Worker(), _path(nullptr), _workDone(new QQueue<QString>()), _timer(new QTimer()),
-    _mutex(new QMutex()), _progress(0), _timerThread(new QThread())
+        : Worker(), _path(nullptr), _workDone(new QQueue<QString>()), _mutex(new QMutex()), _progress(0)
     {
-        connect(this, SIGNAL(this->busy(bool)), this, SLOT(this->handleTimer(bool)));
-        connect(_timer, SIGNAL(_timer->timeout()), this, SLOT(this->emitReadyWork()));
-        _timer->moveToThread(_timerThread);
-        _timer->start(5);
-        _timerThread->start();
     };
 
     ~ClearCacheWorker() override
     {
-        _timer->stop();
-        _timerThread->quit();
-        while (!_timerThread->isFinished());
-        delete _timerThread;
-
-        delete _timer;
         delete _mutex;
         delete _workDone;
     };
 
 public slots:
+
     void
     doWork() override
     {
@@ -112,6 +105,7 @@ public slots:
 
         if (_path == nullptr)
         {
+            emit busy(false);
             return;
         }
 
@@ -119,19 +113,17 @@ public slots:
         auto iter = fs::recursive_directory_iterator(*_path);
         for (const auto& item: iter)
         {
-            // fs::remove(item);
+            fs::remove(item);
             _mutex->lock();
             _workDone->enqueue(QString::fromStdWString(item.path().wstring()));
             _mutex->unlock();
-            QCoreApplication::processEvents(); // This dumb, needs a workaround.
         }
 
-        // fs::remove(path);
+        fs::remove(*_path);
         _mutex->lock();
         _workDone->enqueue(QString::fromStdWString(_path->wstring()));
         _mutex->unlock();
 
-        emitReadyWork();
         emit busy(false);
     }
 
@@ -139,40 +131,29 @@ public slots:
     setPath(const QString& path)
     {
         _path = std::make_unique<fs::path>(path.toStdWString());
-    };
-
-private slots:
-    void
-    handleTimer(bool flag)
-    {
-        if (flag && !_timer->isActive())
-        {
-            _timer->start(5);
-        }
-        else
-        {
-            _timer->stop();
-            emitReadyWork();
-        }
+        _progress = 0;
     };
 
     void
     emitReadyWork()
     {
+        // Don't want to choke UI thread by sending too much data.
+        int chunkSize = 32;
+        int i = 0;
         _mutex->lock();
-        int count = _workDone->count();
-        QVector<QString> doneNow{count};
-        while (!_workDone->empty())
+        QVector<QString> doneNow(0);
+        while (!_workDone->empty() && (i++ < chunkSize))
         {
             doneNow.push_back(_workDone->dequeue());
         }
-        _progress += count;
+        _progress += doneNow.count();
         _mutex->unlock();
         emit progress(_progress);
         emit removedPaths(doneNow);
     }
 
 signals:
+
     void
     progress(int);
 
@@ -182,8 +163,6 @@ signals:
 private:
     std::unique_ptr<fs::path> _path;
     QQueue<QString>* _workDone;
-    QThread* _timerThread;
-    QTimer* _timer;
     QMutex* _mutex;
     int _progress;
 };

@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
-project(rs2-cache-clear)
+project(rs2-config-clear)
 set(CMAKE_CXX_STANDARD 20)
+
+add_compile_options(/std:c++latest)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)

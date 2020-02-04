@@ -29,7 +29,7 @@ MainWidget::MainWidget(QWidget* parent) : QWidget(parent)
     _spinnerLabel = new QLabel();
     _spinnerMovie = new QMovie(":/spinner.gif");
     _spinnerLabel->setMovie(_spinnerMovie);
-    _spinnerLabel->setMinimumHeight(_spinnerMovie->scaledSize().height() + 1);
+    _spinnerLabel->setMinimumHeight(_spinnerMovie->scaledSize().height() + 1); // TODO: doesn't work.
     QSizePolicy spPolicy = _spinnerLabel->sizePolicy();
     spPolicy.setRetainSizeWhenHidden(true);
     _spinnerLabel->setSizePolicy(spPolicy);
@@ -70,22 +70,27 @@ MainWidget::MainWidget(QWidget* parent) : QWidget(parent)
     auto findCacheWorker = new FindCacheWorker();
     auto clearCacheWorker = new ClearCacheWorker();
 
+    _clearProgressUpdateTimer = new QTimer();
+    _clearProgressUpdateTimer->setInterval(5);
+    connect(_clearProgressUpdateTimer, SIGNAL(timeout()), clearCacheWorker, SLOT(emitReadyWork()));
+
     connect(_findCacheButton, SIGNAL(clicked()), findCacheWorker, SLOT(doWork()));
     connect(_findCacheButton, SIGNAL(clicked()), this, SLOT(resetProgressBar()));
     connect(findCacheWorker, SIGNAL(busy(bool)), _findCacheButton, SLOT(setDisabled(bool)));
     connect(findCacheWorker, SIGNAL(busy(bool)), this, SLOT(setSpinnerEnabled(bool)));
     connect(findCacheWorker, SIGNAL(busy(bool)), _clearCacheButton, SLOT(setDisabled(bool)));
     connect(findCacheWorker, SIGNAL(documentsPathResult(QString)), _cachePathText, SLOT(setText(QString)));
-    connect(findCacheWorker, SIGNAL(failure(const QString&)), this, SLOT(onError(const QString&)));
+    connect(findCacheWorker, SIGNAL(failure(QString&)), this, SLOT(onError(QString&)));
     connect(findCacheWorker, SIGNAL(success(bool)), _clearCacheButton, SLOT(setEnabled(bool)));
     connect(findCacheWorker, SIGNAL(itemCountResult(int)), _clearProgressBar, SLOT(setMaximum(int)));
     connect(findCacheWorker, SIGNAL(documentsPathResult(QString)), clearCacheWorker, SLOT(setPath(QString)));
 
     connect(_clearCacheButton, SIGNAL(clicked()), clearCacheWorker, SLOT(doWork()));
+    connect(_clearCacheButton, SIGNAL(clicked()), _clearProgressUpdateTimer, SLOT(start()));
     connect(clearCacheWorker, SIGNAL(removedPaths(QVector<QString>)),
-        this, SLOT(handleRemovedPaths(QVector<QString>)));
+            this, SLOT(handleRemovedPaths(QVector<QString>)));
     connect(clearCacheWorker, SIGNAL(progress(int)), _clearProgressBar, SLOT(setValue(int)));
-    connect(clearCacheWorker, SIGNAL(busy(bool)), _clearCacheButton, SLOT(setDisabled(bool)));
+    connect(clearCacheWorker, SIGNAL(busy(bool)), this, SLOT(handleClearCacheWorkerBusy(bool)));
 
     connect(_findCacheThread, SIGNAL(finished()), findCacheWorker, SLOT(deleteLater()));
     connect(_findCacheThread, SIGNAL(finished()), _findCacheThread, SLOT(deleteLater()));
@@ -101,6 +106,10 @@ MainWidget::MainWidget(QWidget* parent) : QWidget(parent)
 
 MainWidget::~MainWidget()
 {
+    _clearProgressUpdateTimer->stop();
+    while (_clearProgressUpdateTimer->isActive());
+    delete _clearProgressUpdateTimer;
+
     _findCacheThread->quit();
     while (!_findCacheThread->isFinished());
     qDebug() << __FUNCDNAME__ << ": _findCacheThread done";
@@ -135,7 +144,6 @@ MainWidget::setSpinnerEnabled(bool enabled)
     {
         _spinnerLabel->show();
         _spinnerMovie->start();
-
     }
     else
     {
@@ -151,10 +159,27 @@ MainWidget::handleRemovedPaths(const QVector<QString>& paths)
     {
         _logText->append("Removed: " + p);
     }
+
+    if (_clearProgressBar->value() == _clearProgressBar->maximum())
+    {
+        _clearProgressUpdateTimer->stop();
+        _findCacheButton->setEnabled(true);
+    }
 }
 
 void
 MainWidget::resetProgressBar()
 {
     _clearProgressBar->setValue(0);
+}
+
+void MainWidget::handleClearCacheWorkerBusy(bool busy)
+{
+    if (busy)
+    {
+        _findCacheButton->setEnabled(false);
+        _clearCacheButton->setEnabled(false);
+    }
+    // Don't enable on busy(false), because timer might still be
+    // updating log text box.
 }
