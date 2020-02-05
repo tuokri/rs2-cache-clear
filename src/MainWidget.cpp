@@ -80,7 +80,7 @@ MainWidget::MainWidget(QWidget* parent) : QWidget(parent)
     connect(findCacheWorker, SIGNAL(busy(bool)), this, SLOT(setSpinnerEnabled(bool)));
     connect(findCacheWorker, SIGNAL(busy(bool)), _clearCacheButton, SLOT(setDisabled(bool)));
     connect(findCacheWorker, SIGNAL(documentsPathResult(QString)), _cachePathText, SLOT(setText(QString)));
-    connect(findCacheWorker, SIGNAL(failure(QString&)), this, SLOT(onError(QString&)));
+    connect(findCacheWorker, SIGNAL(failure(const QString&)), this, SLOT(onError(const QString&)));
     connect(findCacheWorker, SIGNAL(success(bool)), _clearCacheButton, SLOT(setEnabled(bool)));
     connect(findCacheWorker, SIGNAL(itemCountResult(int)), _clearProgressBar, SLOT(setMaximum(int)));
     connect(findCacheWorker, SIGNAL(documentsPathResult(QString)), clearCacheWorker, SLOT(setPath(QString)));
@@ -133,6 +133,7 @@ MainWidget::~MainWidget()
 void
 MainWidget::onError(const QString& msg)
 {
+    _clearCacheButton->setEnabled(false);
     QMessageBox::warning(this, "Warning",
                          msg, QMessageBox::Ok);
 }
