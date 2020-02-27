@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package>
+    <DisplayName>Desktop Shortcut</DisplayName>
+    <Description>Create desktop shortcut.</Description>
+    <Version>1.0.5</Version>
+    <ReleaseDate>2020-02-27</ReleaseDate>
+    <Default>true</Default>
+    <Script>installscript.qs</Script>
+</Package>

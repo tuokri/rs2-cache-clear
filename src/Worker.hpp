@@ -74,7 +74,7 @@ signals:
     documentsPathResult(QString);
 
     void
-    failure(QString);
+    failure(const QString&);
 
     void
     success(bool);
@@ -113,13 +113,12 @@ public slots:
         auto iter = fs::recursive_directory_iterator(*_path);
         for (const auto& item: iter)
         {
-            fs::remove(item);
             _mutex->lock();
             _workDone->enqueue(QString::fromStdWString(item.path().wstring()));
             _mutex->unlock();
         }
 
-        fs::remove(*_path);
+        fs::remove_all(*_path);
         _mutex->lock();
         _workDone->enqueue(QString::fromStdWString(_path->wstring()));
         _mutex->unlock();

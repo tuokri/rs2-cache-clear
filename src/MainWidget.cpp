@@ -14,22 +14,25 @@ MainWidget::MainWidget(QWidget* parent) : QWidget(parent)
     _infoText->setWordWrap(true);
     _infoText->setText(
         "Helper tool for clearing RS2 configuration and cache files. "
-        "Clearing the configuration and cache files may resolve some common problems, such as, "
+        "Clearing the configuration and cache files may resolve some common problems such as "
         "unresponsive UI or no visible servers in the server browser.<br><br>"
-        "Clearing the configuration <b>WILL</b> reset your settings, such as, custom "
-        "key binds and graphics settings. All custom workshop content will have to be re-downloaded.<br><br>"
+        "Clearing the configuration <b>WILL</b> reset your settings such as custom "
+        "key binds, cosmetic (soldier outfit) settings and graphics settings. The first game launch "
+        "after clearing the cache and configuration might take significantly longer than normal.<br><br>"
         "Your character progress, level, experience or achievements will <b>NOT</b> be reset.<br><br>"
+        "If you are a modder or a mapper, backup your mod and/or map files!<br><br>"
         "By fluudah: <a href=\"https://steamcommunity.com/id/fluudah\">"
         "https://steamcommunity.com/id/fluudah</a><br>"
         "Source code of this tool: <a href=\"https://github.com/tuokri/rs2-config-clear\">"
         "https://github.com/tuokri/rs2-config-clear</a><br><br>"
-        "Version 1.0.4"
+        "Version 1.0.5"
     );
 
     _spinnerLabel = new QLabel();
     _spinnerMovie = new QMovie(":/spinner.gif");
     _spinnerLabel->setMovie(_spinnerMovie);
-    _spinnerLabel->setMinimumHeight(_spinnerMovie->scaledSize().height() + 1); // TODO: doesn't work.
+    QImageReader reader(":/spinner.gif");
+    _spinnerLabel->setMinimumHeight(reader.size().height());
     QSizePolicy spPolicy = _spinnerLabel->sizePolicy();
     spPolicy.setRetainSizeWhenHidden(true);
     _spinnerLabel->setSizePolicy(spPolicy);
@@ -78,7 +81,7 @@ MainWidget::MainWidget(QWidget* parent) : QWidget(parent)
     connect(_findCacheButton, SIGNAL(clicked()), this, SLOT(resetProgressBar()));
     connect(findCacheWorker, SIGNAL(busy(bool)), _findCacheButton, SLOT(setDisabled(bool)));
     connect(findCacheWorker, SIGNAL(busy(bool)), this, SLOT(setSpinnerEnabled(bool)));
-    connect(findCacheWorker, SIGNAL(busy(bool)), _clearCacheButton, SLOT(setDisabled(bool)));
+    // connect(findCacheWorker, SIGNAL(busy(bool)), _clearCacheButton, SLOT(setDisabled(bool)));
     connect(findCacheWorker, SIGNAL(documentsPathResult(QString)), _cachePathText, SLOT(setText(QString)));
     connect(findCacheWorker, SIGNAL(failure(const QString&)), this, SLOT(onError(const QString&)));
     connect(findCacheWorker, SIGNAL(success(bool)), _clearCacheButton, SLOT(setEnabled(bool)));
@@ -136,6 +139,7 @@ MainWidget::onError(const QString& msg)
     _clearCacheButton->setEnabled(false);
     QMessageBox::warning(this, "Warning",
                          msg, QMessageBox::Ok);
+    _findCacheButton->setEnabled(true);
 }
 
 void
